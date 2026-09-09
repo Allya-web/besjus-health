@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>倍佐健康 · 季度健康问卷</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin:0; font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif; background:#f2f3f5; color:#333; font-size:15px; }
+    .entry { background:linear-gradient(135deg,#E60012,#ff5a4d); color:#fff; padding:24px 22px 30px; text-align:center; }
+    .entry .logo { width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,.2);display:inline-flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;margin-bottom:10px; }
+    .entry h1 { margin:0;font-size:20px;letter-spacing:1px; }
+    .entry p { margin:6px 0 0; opacity:.92; font-size:13px; }
+    .card { background:#fff; border-radius:14px; margin:-16px 14px 16px; padding:16px; box-shadow:0 4px 16px rgba(0,0,0,.06); }
+    .sec { margin-bottom:14px; }
+    .sec-h { font-size:15px; font-weight:700; color:#E60012; border-left:4px solid #E60012; padding-left:8px; margin-bottom:8px; }
+    label.field { display:block; margin-bottom:10px; }
+    label.field > span { display:block; font-size:13px; color:#666; margin-bottom:5px; }
+    input, select, textarea { width:100%; border:1px solid #e0e0e0; border-radius:8px; padding:9px; font-size:15px; font-family:inherit; background:#fff; }
+    textarea { resize:vertical; }
+    .chips { display:flex; flex-wrap:wrap; gap:8px; }
+    .chip { border:1px solid #ddd; border-radius:18px; padding:7px 12px; font-size:13px; background:#fff; cursor:pointer; user-select:none; }
+    .chip.on { background:#E60012; color:#fff; border-color:#E60012; }
+    .row2 { display:flex; gap:10px; }
+    .row2 > * { flex:1; }
+    .month-card { border:1px solid #eee; border-radius:12px; margin-bottom:12px; overflow:hidden; }
+    .month-h { background:#fafafa; padding:11px 14px; font-weight:700; color:#333; border-bottom:1px solid #f0f0f0; cursor:pointer; }
+    .month-b { padding:12px 14px; }
+    .month-card.collapsed .month-b { display:none; }
+    .submit { position:fixed; left:0; right:0; bottom:0; padding:12px 14px; background:#fff; box-shadow:0 -2px 10px rgba(0,0,0,.08); }
+    .submit button { width:100%; background:#E60012; color:#fff; border:none; border-radius:10px; padding:14px; font-size:16px; font-weight:700; }
+    .done { text-align:center; padding:24px 10px; }
+    .done .ok { font-size:44px; }
+    .code-box { background:#f6f6f6; border:1px dashed #ccc; border-radius:8px; padding:10px; font-size:12px; word-break:break-all; margin-top:10px; color:#555; user-select:all; }
+    .info { background:#fff7f7; border:1px solid #ffd9d9; color:#b3000e; border-radius:8px; padding:8px 10px; font-size:12px; margin:0 14px 12px; }
+  </style>
+</head>
+<body>
+  <div class="entry">
+    <div class="logo">＋</div>
+    <h1>倍佐健康</h1>
+    <p>季度健康问卷 · 约 3 分钟 · 健康无忧 未来可控</p>
+  </div>
+  <div id="ctx" class="info" style="display:none"></div>
+
+  <form id="f" class="card" onsubmit="return false;">
+    <div class="sec">
+      <div class="sec-h">客户信息</div>
+      <label class="field"><span>姓名</span><input id="name" required placeholder="请输入姓名"></label>
+      <div class="row2">
+        <label class="field"><span>性别</span>
+          <select id="gender"><option>男</option><option>女</option></select>
+        </label>
+        <label class="field"><span>年龄</span><input id="age" type="number" min="0" max="120" placeholder="如 58"></label>
+      </div>
+      <label class="field"><span>身高（cm，选填，用于计算 BMI）</span><input id="height" type="number" min="100" max="220" step="0.1" placeholder="如 165"></label>
+    </div>
+
+    <div class="sec" id="months"></div>
+
+    <div class="sec">
+      <div class="sec-h">其他想咨询的问题（选填）</div>
+      <label class="field"><span>对用药、饮食、复查等的疑问</span><textarea id="extraQ" rows="2" placeholder="如：最近饮酒后肝酶升高，是否需要调整用药？"></textarea></label>
+    </div>
+  </form>
+
+  <div class="submit"><button onclick="submitQuestionnaire()">提交问卷</button></div>
+
+  <script>
+    var SYMPTOMS = ['头晕/头痛','胸闷/心悸','肢体麻木/乏力','视物模糊','睡眠质量下降','情绪波动','其他','无其他不适'];
+    var NO_SYM = '无其他不适';
+    var MEDS = ['降压药','降脂药','降糖药','降尿酸药','护肝药','维生素/矿物质补充剂','不服用任何药物/补剂'];
+    var NO_MED = '不服用任何药物/补剂';
+    var SLEEP = ['好','一般','差'];
+    var DIET = ['荤素均衡','偏荤','偏素'];
+    var FRIED = ['几乎不吃','每周 1-2 次','每周 3 次以上'];
+    var DRINK = ['不饮','偶尔','经常'];
+
+    var CFG = null;
+    function decodeCfg(){
+      try {
+        var p = location.search || location.hash || '';
+        var m = p.match(/[?&]c=([^&]+)/) || p.match(/#c=([^&]+)/);
+        if (!m) return null;
+        return JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))));
+      } catch(e){ return null; }
+    }
+    function defaultMonths(){
+      var d = new Date(); var y = d.getFullYear(); var mo = d.getMonth()+1;
+      var q = Math.floor((mo-1)/3)+1; var base = (q-1)*3+1;
+      return [1,2,3].map(function(i){ return y+'年'+(base+i-1)+'月'; });
+    }
+    function $(id){ return document.getElementById(id); }
+
+    function buildUI(){
+      CFG = decodeCfg();
+      var months = (CFG && CFG.months) ? CFG.months : defaultMonths();
+      if (CFG){
+        $('name').value = CFG.name || '';
+        if (CFG.gender) $('gender').value = CFG.gender;
+        if (CFG.age) $('age').value = CFG.age;
+        var qLabel = {Q1:'第一季度',Q2:'第二季度',Q3:'第三季度',Q4:'第四季度'}[CFG.quarter] || '';
+        $('ctx').style.display='block';
+        $('ctx').textContent = '您好' + (CFG.name?('，'+CFG.name):'') + '，请填写 '+ (CFG.year||'') +' 年 '+ qLabel +' 的健康情况（共 '+ months.length +' 个月）。';
+      }
+      var host = $('months'); host.innerHTML='';
+      months.forEach(function(label, idx){
+        var card = document.createElement('div'); card.className='month-card' + (idx===0?'':' collapsed');
+        var fields = '';
+        function num(lbl, fid, ph){ return '<label class="field"><span>'+lbl+'</span><input id="'+fid+'_'+idx+'" type="number" step="any" placeholder="'+ph+'"></label>'; }
+        var medChips = MEDS.map(function(m){ return '<div class="chip med-chip" data-i="'+idx+'" data-m="'+m+'">'+m+'</div>'; }).join('');
+        fields +=
+          '<label class="field"><span>长期用药 / 补剂（可多选）</span><div class="chips med-chips" id="meds_'+idx+'">'+medChips+'</div></label>'+
+          '<label class="field med-adhere-row" id="med-adhere_'+idx+'" style="display:none"><span>用药依从性</span><select id="medDays_'+idx+'"><option value="">请选择</option><option>规律服用</option><option>偶尔吃</option><option>几乎不吃</option></select></label>';
+        fields +=
+          '<div class="row2">'+ num('运动(次/周)','exFreq','4') + num('运动(分/次)','exMin','40') +'</div>'+
+          '<div class="row2">'+ num('体重(kg)','weight','62') + num('吸烟(支/天)','smoke','0') +'</div>'+
+          '<div class="row2">'+ num('收缩压','sbp','120') + num('舒张压','dbp','80') +'</div>'+
+          '<div class="row2">'+ num('空腹血糖','fpg','5.4') + num('心率','hr','72') +'</div>';
+        function sel(lbl, fid, opts){ var o=opts.map(function(x){return '<option>'+x+'</option>';}).join(''); return '<label class="field"><span>'+lbl+'</span><select id="'+fid+'_'+idx+'"><option value="">请选择</option>'+o+'</select></label>'; }
+        fields +=
+          '<div class="row2">'+ sel('睡眠质量','sleep',SLEEP) + num('睡眠时长(小时)','sleepHours','7.5') +'</div>'+
+          '<div class="row2">'+ sel('饮食结构','diet',DIET) + sel('油炸/高脂频次','fried',FRIED) +'</div>'+
+          '<div class="row2">'+ sel('饮酒频次','drink',DRINK) +'</div>';
+        var chips = SYMPTOMS.map(function(s){ return '<div class="chip sym-chip" data-i="'+idx+'" data-s="'+s+'">'+s+'</div>'; }).join('');
+        fields += '<div style="font-size:13px;color:#666;margin:4px 0 6px">以下症状如有，请勾选：</div><div class="chips" id="sym_'+idx+'">'+chips+'</div>';
+        fields += '<label class="field" style="margin-top:8px"><span>新发症状 / 就医记录（选填）</span><textarea id="newSymptom_'+idx+'" rows="2"></textarea></label>';
+        fields += '<label class="field"><span>本月最关心的健康问题（选填）</span><textarea id="question_'+idx+'" rows="2"></textarea></label>';
+        card.innerHTML = '<div class="month-h" onclick="this.parentNode.classList.toggle(\'collapsed\')">'+ label +'</div><div class="month-b">'+ fields +'</div>';
+        host.appendChild(card);
+      });
+      // 症状 chips 事件（"无其他不适"与其他症状互斥）
+      host.querySelectorAll('.sym-chip').forEach(function(c){
+        c.addEventListener('click', function(){
+          var idx = c.getAttribute('data-i'), s = c.getAttribute('data-s');
+          var box = $('sym_'+idx);
+          var on = !c.classList.contains('on');
+          if (on) {
+            if (s === NO_SYM) {
+              box.querySelectorAll('.sym-chip.on').forEach(function(x){ x.classList.remove('on'); });
+            } else {
+              box.querySelectorAll('.sym-chip').forEach(function(x){ if (x.getAttribute('data-s') === NO_SYM) x.classList.remove('on'); });
+            }
+          }
+          c.classList.toggle('on', on);
+        });
+      });
+      // 长期用药/补剂多选：选药排除「不服用」反之亦然；选药后追问是否按时用药
+      host.querySelectorAll('.med-chip').forEach(function(c){
+        c.addEventListener('click', function(){
+          var idx = c.getAttribute('data-i'), m = c.getAttribute('data-m');
+          var box = $('meds_'+idx);
+          var on = !c.classList.contains('on');
+          if (on) {
+            if (m === NO_MED) {
+              box.querySelectorAll('.chip.on').forEach(function(x){ x.classList.remove('on'); });
+            } else {
+              box.querySelectorAll('.chip').forEach(function(x){ if (x.getAttribute('data-m') === NO_MED) x.classList.remove('on'); });
+            }
+          }
+          c.classList.toggle('on', on);
+          var taking = [].some.call(box.querySelectorAll('.chip.on'), function(x){ return x.getAttribute('data-m') !== NO_MED; });
+          var row = $('med-adhere_'+idx);
+          row.style.display = taking ? 'block' : 'none';
+          if (!taking) $('medDays_'+idx).value = '';
+        });
+      });
+    }
+    function g(id){ return document.getElementById(id); }
+    function gatherMonth(idx){
+      var sym = [].map.call(document.querySelectorAll('#sym_'+idx+' .chip.on'), function(c){return c.getAttribute('data-s');})
+        .filter(function(s){ return s !== NO_SYM; });
+      var meds = [].map.call(document.querySelectorAll('#meds_'+idx+' .chip.on'), function(c){return c.getAttribute('data-m');});
+      var extra = g('extraQ').value || '';
+      var q = (g('question_'+idx).value||'');
+      if (idx === 0 && extra) q = q ? (q + '；' + extra) : extra;
+      return {
+        month: (CFG && CFG.months) ? CFG.months[idx] : defaultMonths()[idx],
+        symptoms: sym,
+        newSymptom: g('newSymptom_'+idx).value || '',
+        meds: meds, medDays: g('medDays_'+idx).value,
+        exFreq: g('exFreq_'+idx).value, exMin: g('exMin_'+idx).value,
+        weight: g('weight_'+idx).value, height: g('height').value, smoke: g('smoke_'+idx).value,
+        sbp: g('sbp_'+idx).value, dbp: g('dbp_'+idx).value, fpg: g('fpg_'+idx).value, hr: g('hr_'+idx).value,
+        sleep: g('sleep_'+idx).value, sleepHours: g('sleepHours_'+idx).value, diet: g('diet_'+idx).value, fried: g('fried_'+idx).value, drink: g('drink_'+idx).value,
+        question: q
+      };
+    }
+    function submitQuestionnaire(){
+      var name = g('name').value.trim();
+      if (!name){ alert('请填写姓名'); return; }
+      var months = (CFG && CFG.months) ? CFG.months.length : 3;
+      var checkins = [];
+      for (var i=0;i<months;i++) checkins.push(gatherMonth(i));
+      var payload = { v:1, name:name, type: (CFG&&CFG.type)||'', quarter:(CFG&&CFG.quarter)||'', year:(CFG&&CFG.year)||'', checkins:checkins };
+      var code = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+      var f = g('f'); f.style.display='none'; document.querySelector('.submit').style.display='none';
+      var done = document.createElement('div'); done.className='done';
+      done.innerHTML = '<div class="ok">✅</div><h3>问卷提交成功</h3>'+
+        '<p style="color:#666;font-size:13px">请将下方「回传码」发送给您的健管师，即可同步到季度小结。</p>'+
+        '<div class="code-box">'+code+'</div>'+
+        '<p style="color:#999;font-size:12px;margin-top:10px">长按复制上方回传码，通过微信发给健管师即可。</p>';
+      document.querySelector('.card').appendChild(done);
+      window.scrollTo(0,0);
+    }
+    buildUI();
+  </script>
+</body>
+</html>
