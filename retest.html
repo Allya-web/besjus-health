@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>倍佐健康 · 复查检查单回传</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin:0; font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif; background:#f2f3f5; color:#333; font-size:15px; }
+    .entry { background:linear-gradient(135deg,#0e8a5e,#3a9d5d); color:#fff; padding:30px 22px 36px; text-align:center; }
+    .entry .logo { width:54px;height:54px;border-radius:14px;background:rgba(255,255,255,.2);display:inline-flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;margin-bottom:12px; }
+    .entry h1 { margin:0;font-size:22px;letter-spacing:1px; }
+    .entry p { margin:6px 0 0; opacity:.9; font-size:13px; }
+    .card { background:#fff; border-radius:14px; margin:-18px 14px 16px; padding:18px 16px; box-shadow:0 4px 16px rgba(0,0,0,.06); }
+    .sec { margin-bottom:18px; }
+    .sec-h { font-size:15px; font-weight:700; color:#0e8a5e; border-left:4px solid #0e8a5e; padding-left:8px; margin-bottom:10px; }
+    .sec-tip { font-size:12px; color:#888; margin:4px 0 10px; }
+    label.field { display:block; margin-bottom:12px; }
+    label.field > span { display:block; font-size:13px; color:#666; margin-bottom:5px; }
+    input, select, textarea { width:100%; border:1px solid #e0e0e0; border-radius:8px; padding:10px; font-size:15px; font-family:inherit; }
+    textarea { resize:vertical; }
+    .row2 { display:flex; gap:10px; }
+    .row2 > * { flex:1; }
+    .submit { position:fixed; left:0; right:0; bottom:0; padding:12px 14px; background:#fff; box-shadow:0 -2px 10px rgba(0,0,0,.08); }
+    .submit button { width:100%; background:#0e8a5e; color:#fff; border:none; border-radius:10px; padding:14px; font-size:16px; font-weight:700; }
+    .done { text-align:center; padding:30px 10px; }
+    .done .ok { font-size:46px; }
+    .code-box { background:#f6f6f6; border:1px dashed #ccc; border-radius:8px; padding:10px; font-size:12px; word-break:break-all; margin-top:10px; color:#555; }
+    .code-label { display:block; text-align:left; font-size:13px; font-weight:700; color:#333; margin:14px 0 4px; }
+    .code-input { width:100%; background:#f4fbf7; border:1px solid #b7e0c8; border-radius:8px; padding:10px; font-size:14px; color:#0e5a3a; word-break:break-all; box-sizing:border-box; }
+    .btn-copy { display:block; width:100%; margin-top:6px; background:#0e8a5e; color:#fff; border:none; border-radius:8px; padding:10px; font-size:14px; font-weight:700; }
+    .btn-again { display:block; width:100%; margin-top:14px; background:#fff; color:#0e8a5e; border:1px solid #0e8a5e; border-radius:8px; padding:10px; font-size:14px; font-weight:700; }
+    .done .tip { color:#999; font-size:12px; margin-top:10px; }
+    .ctx-info { display:none; background:#f4fbf7; border:1px solid #b7e0c8; color:#0e5a3a; border-radius:8px; padding:8px 10px; font-size:12px; margin-bottom:12px; }
+  </style>
+</head>
+<body>
+  <div class="entry">
+    <div class="logo">✓</div>
+    <h1>倍佐健康 · 复查回传</h1>
+    <p>季度复查检查单 · 仅需 2 分钟 · 数据直通您的健管师</p>
+  </div>
+
+  <form id="f" class="card" onsubmit="return false;">
+    <div id="ctx-info" class="ctx-info"></div>
+
+    <div class="sec">
+      <div class="sec-h">基本信息</div>
+      <label class="field"><span>姓名</span><input id="name" required placeholder="请输入姓名"></label>
+      <div class="row2">
+        <label class="field"><span>复查季度</span>
+          <select id="quarter"><option value="Q1">Q1（1-3 月）</option><option value="Q2">Q2（4-6 月）</option><option value="Q3">Q3（7-9 月）</option><option value="Q4">Q4（10-12 月）</option></select>
+        </label>
+        <label class="field"><span>复查年份</span><input id="year" type="number" min="2024" max="2099" placeholder="如 2026"></label>
+      </div>
+      <label class="field"><span>复查日期</span><input id="date" type="text" inputmode="numeric" placeholder="如 2026-08-27" required></label>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h">拍照上传 · 自动识别（推荐）</div>
+      <p class="sec-tip">把复查报告拍张照（或上传电子版文件），系统自动识别下方指标并填入表单，不用手打。首次识别需联网加载引擎，约 1-2 分钟，请耐心等待。</p>
+      <input type="file" id="file" accept="image/*,.pdf,.docx,.txt,.md" style="background:#f4fbf7">
+      <button type="button" id="btn-ocr" onclick="runOcr()" style="margin-top:10px;width:100%;background:#0e8a5e;color:#fff;border:none;border-radius:8px;padding:11px;font-size:15px;font-weight:700">上传并识别</button>
+      <div id="ocr-prog" style="margin-top:8px;font-size:12px;color:#888;white-space:pre-wrap"></div>
+      <div id="ocr-hits" style="margin-top:6px"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h">一、复查检查单（按医院复查报告填写）</div>
+      <p class="sec-tip">以下指标如复查报告中有，请填入；未做的留空即可。</p>
+      <div class="row2">
+        <label class="field"><span>收缩压（mmHg）</span><input id="sbp" type="number" placeholder="如 128"></label>
+        <label class="field"><span>舒张压（mmHg）</span><input id="dbp" type="number" placeholder="如 82"></label>
+      </div>
+      <div class="row2">
+        <label class="field"><span>体重（kg）</span><input id="weight" type="number" step="0.1" placeholder="如 65.5"></label>
+        <label class="field"><span>心率（次/分）</span><input id="hr" type="number" placeholder="如 72"></label>
+      </div>
+      <div class="row2">
+        <label class="field"><span>空腹血糖（mmol/L）</span><input id="fpg" type="number" step="0.1" placeholder="如 5.4"></label>
+        <label class="field"><span>总胆固醇（mmol/L）</span><input id="tc" type="number" step="0.01" placeholder="如 4.6"></label>
+      </div>
+      <div class="row2">
+        <label class="field"><span>低密度脂蛋白（mmol/L）</span><input id="ldl" type="number" step="0.01" placeholder="如 2.8"></label>
+        <label class="field"><span>甘油三酯（mmol/L）</span><input id="tg" type="number" step="0.01" placeholder="如 1.5"></label>
+      </div>
+      <div class="row2">
+        <label class="field"><span>腰围（cm）</span><input id="waist" type="number" step="0.1" placeholder="如 85"></label>
+        <label class="field"><span>血尿酸（μmol/L）</span><input id="ua" type="number" placeholder="如 360"></label>
+      </div>
+      <div class="row2">
+        <label class="field"><span>25 羟维生素 D（ng/mL）</span><input id="vitd" type="number" step="0.1" placeholder="如 28"></label>
+        <label class="field"><span>骨密度 T 值</span><input id="bmd" type="number" step="0.1" placeholder="如 -1.2"></label>
+      </div>
+      <div class="row2">
+        <label class="field"><span>CYFRA21-1（ng/mL）</span><input id="cyfra21" type="number" step="0.01" placeholder="如 3.2"></label>
+        <label class="field"><span>谷氨酰转肽酶（U/L）</span><input id="ggt" type="number" placeholder="如 32"></label>
+      </div>
+      <label class="field"><span>肾小球滤过率（mL/min）</span><input id="egfr" type="number" placeholder="如 95"></label>
+    </div>
+
+    <div class="sec">
+      <div class="sec-h">二、复查报告原文（选填）</div>
+      <p class="sec-tip">拍照识别后报告全文会自动填入此处；未上传照片时，也可手动把复查报告中的文字结论/数值列表整段粘贴，健管师可一键识别并归档。</p>
+      <label class="field"><span>报告内容（OCR 自动填入 / 可粘贴整段文字）</span><textarea id="rawText" placeholder="例：复查血脂、肝功能...LDL-C 2.8 mmol/L..."></textarea></label>
+    </div>
+  </form>
+
+  <div class="submit"><button onclick="submitRetest()">提交复查单</button></div>
+
+  <script src="js/report-extract.js?v=60"></script>
+  <script>
+    function escHtml(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function readParams(){
+      var s = (location.search || '').replace(/^\?/, '');
+      var h = (location.hash || '').replace(/^#/, '');
+      var q = {};
+      (s + '&' + h).split('&').forEach(function(p){ if(!p) return; var i=p.indexOf('='); if(i<0) return; q[p.slice(0,i)] = decodeURIComponent(p.slice(i+1)); });
+      return q;
+    }
+    var PARAMS = readParams();
+    (function(){
+      var d = new Date(); var Y = d.getFullYear(), Mo = String(d.getMonth()+1).padStart(2,'0'), Da = String(d.getDate()).padStart(2,'0');
+      document.getElementById('date').value = Y+'-'+Mo+'-'+Da;
+      document.getElementById('year').value = Y;
+      /* 默认季度：当前月份所在季度 */
+      var curQ = 'Q' + Math.floor((d.getMonth()) / 3 + 1);
+      document.getElementById('quarter').value = curQ;
+      if (PARAMS.name) document.getElementById('name').value = PARAMS.name;
+      if (PARAMS.cid) {
+        var info = document.getElementById('ctx-info');
+        if (info) { info.style.display='block'; info.textContent = '（来自健管师邀请，提交后将自动归入「' + (PARAMS.name||'您') + '」的健康档案）'; }
+      }
+      if (PARAMS.q) document.getElementById('quarter').value = PARAMS.q;
+      if (PARAMS.y) document.getElementById('year').value = PARAMS.y;
+    })();
+
+    function v(id){ return document.getElementById(id).value; }
+    function numOrNull(id){
+      var s = v(id);
+      if (s === '' || s == null) return null;
+      var n = Number(s);
+      return isNaN(n) ? null : n;
+    }
+    function gather(){
+      var metrics = {};
+      ['sbp','dbp','weight','hr','fpg','tc','ldl','tg','waist','ua','vitd','bmd','cyfra21','ggt','egfr'].forEach(function(k){
+        var n = numOrNull(k);
+        if (n != null) metrics[k] = n;
+      });
+      var bp = null;
+      if (metrics.sbp != null && metrics.dbp != null) bp = metrics.sbp + '/' + metrics.dbp;
+      return {
+        cid: PARAMS.cid || '',
+        name: v('name'),
+        quarter: v('quarter'),
+        year: v('year'),
+        qKey: v('quarter') + '_' + v('year'),
+        date: v('date'),
+        metrics: metrics,
+        bp: bp,
+        rawText: v('rawText'),
+        submittedAt: new Date().toISOString()
+      };
+    }
+
+    function copyVal(id, btnId, okText){
+      try{
+        var el = document.getElementById(id);
+        if(!el) return;
+        el.focus(); el.select(); el.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+      }catch(e){}
+      var btn = document.getElementById(btnId);
+      if(btn){
+        var t = btn.textContent;
+        btn.textContent = '✅ ' + okText;
+        btn.style.background = '#3a9d5d';
+        setTimeout(function(){ btn.textContent = t; btn.style.background = '#0e8a5e'; }, 2200);
+      }
+    }
+
+    /* ---- v55 拍照/文件上传 → OCR 识别 → 自动回填表单 ---- */
+    var RETEST_CODES = ['sbp','dbp','weight','hr','fpg','tc','ldl','tg','waist','ua','vitd','bmd','cyfra21','ggt','egfr'];
+    var CODE_LABEL = { sbp:'收缩压', dbp:'舒张压', weight:'体重', hr:'心率', fpg:'空腹血糖', tc:'总胆固醇', ldl:'低密度脂蛋白', tg:'甘油三酯', waist:'腰围', ua:'血尿酸', vitd:'25羟维生素D', bmd:'骨密度T值', cyfra21:'CYFRA21-1', ggt:'谷氨酰转肽酶', egfr:'肾小球滤过率' };
+    function runOcr(){
+      var fi = document.getElementById('file'), prog = document.getElementById('ocr-prog');
+      var f = fi && fi.files && fi.files[0];
+      if(!f){ alert('请先选择复查报告照片或文件'); return; }
+      if(!window.ExtractEngine || !ExtractEngine.fileToText){
+        prog.textContent = '识别引擎未加载，请刷新页面重试，或直接手动填写下方指标。';
+        return;
+      }
+      prog.textContent = '正在识别…首次使用需联网下载识别引擎（约 1-2 分钟）';
+      ExtractEngine.fileToText(f, function(s){ prog.textContent = s || '识别中…'; }).then(function(res){
+        var txt = (res && res.text) || '';
+        if(!txt || !txt.trim()){
+          prog.textContent = '未能识别到文字。请确认照片清晰、字迹可辨，或直接手动填写下方指标。';
+          prog.style.color = '#b3000e';
+          return;
+        }
+        var payload = ExtractEngine.extract(txt);
+        var filled = [];
+        (payload.results || []).forEach(function(r){
+          if(RETEST_CODES.indexOf(r.code) >= 0 && r.value != null && r.value !== ''){
+            var el = document.getElementById(r.code);
+            if(el){ el.value = r.value; filled.push(CODE_LABEL[r.code] || r.code); }
+          }
+        });
+        var raw = document.getElementById('rawText');
+        if(raw) raw.value = txt;
+        if(filled.length){
+          var note = '';
+          if(payload.results.some(function(r){ return r.code === 'vitd' && Number(r.value) > 100; }))
+            note = '（维生素D若报告单位是 nmol/L，请除以 2.5 换算成 ng/mL）';
+          prog.textContent = '已识别 ' + filled.length + ' 项并填入上方表单：' + filled.join('、') + '。请核对数值与单位后提交。' + note;
+          prog.style.color = '#0e5a3a';
+        } else {
+          prog.textContent = '已读取报告文字，但未识别到可填指标。报告原文已自动填入下方「复查报告原文」，可手动补填指标。';
+          prog.style.color = '#b3000e';
+        }
+      }).catch(function(e){
+        prog.textContent = '识别失败：' + (e && e.message ? e.message : e) + '。可稍后重试，或直接手动填写下方指标。';
+        prog.style.color = '#b3000e';
+      });
+    }
+
+    function submitRetest(){
+      var data = gather();
+      if(!data.name.trim()){ alert('请填写姓名'); return; }
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(data.date.trim())){ alert('复查日期格式应为 YYYY-MM-DD（如 2026-08-27）'); return; }
+      if(!/^Q[1-4]$/.test(data.quarter)){ alert('复查季度应为 Q1/Q2/Q3/Q4'); return; }
+      if(!/^\d{4}$/.test(String(data.year))){ alert('复查年份格式应为 YYYY'); return; }
+      // 至少需要填一项指标或一段文本，否则视为空提交
+      var hasMetric = Object.keys(data.metrics).length > 0;
+      if(!hasMetric && !(data.rawText && data.rawText.trim())){
+        alert('请至少填写一项复查指标，或粘贴一段报告原文'); return;
+      }
+      // 防重复提交：同一客户（cid 或姓名）+ 同一季度已提交则提示
+      try{
+        var all = JSON.parse(localStorage.getItem('bz_retests')||'[]');
+        var dup = all.some(function(x){
+          var sameCust = (data.cid && x.cid === data.cid) || (!data.cid && x.name === data.name);
+          return sameCust && x.qKey === data.qKey;
+        });
+        if(dup){
+          if(!confirm('检测到「' + data.name + '」' + data.qKey + ' 已提交过复查单。是否仍要再次提交（将覆盖重复记录）？')) return;
+        }
+        all.push(data); localStorage.setItem('bz_retests', JSON.stringify(all));
+      }catch(e){}
+      // 生成离线导入码（Base64 全量数据）
+      var code = '';
+      try { code = btoa(unescape(encodeURIComponent(JSON.stringify(data)))); } catch(e){}
+      var dataLink = 'retest.html#import=' + encodeURIComponent(code);
+      try{
+        if (typeof location !== 'undefined' && location && location.href) {
+          dataLink = location.href.split('#')[0] + '#import=' + encodeURIComponent(code);
+        }
+      }catch(e){}
+      // 隐藏表单和底部提交栏
+      var f = document.getElementById('f');
+      if(f) f.style.display='none';
+      var sb = document.querySelector('.submit');
+      if(sb) sb.style.display='none';
+      var done = document.createElement('div'); done.className='done';
+      done.innerHTML =
+        '<div class="ok">✅</div><h3>复查单提交成功</h3>'+
+        '<p style="color:#666;font-size:13px">请将下方任意一种方式发给您的健管师，健管师即可把本次复查数据归档到「' + escHtml(data.qKey) + '」季度小结中：</p>'+
+        '<span class="code-label">① 复制「复查数据链接」（推荐）</span>'+
+        '<input class="code-input" id="data-link-box" readonly value="'+escHtml(dataLink)+'" onclick="this.select()">'+
+        '<button class="btn-copy" id="btn-copy-link" onclick="copyVal(\'data-link-box\',\'btn-copy-link\',\'链接已复制，请粘贴发送给健管师\')">复制数据链接</button>'+
+        '<span class="code-label">② 或复制「回传码」</span>'+
+        '<input class="code-input" id="code-box" readonly value="'+escHtml(code)+'" onclick="this.select()">'+
+        '<button class="btn-copy" id="btn-copy-code" onclick="copyVal(\'code-box\',\'btn-copy-code\',\'回传码已复制，请粘贴发送给健管师\')">复制回传码</button>'+
+        '<p class="tip">提示：健管师在系统「月度打卡 → 复查检查单 → 粘贴客户回传码」中粘贴链接或回传码即可归档。</p>'+
+        '<button class="btn-again" onclick="location.reload()">再填一次</button>';
+      document.body.appendChild(done);
+      try{ window.scrollTo(0,0); }catch(e){}
+    }
+  </script>
+</body>
+</html>
