@@ -1,0 +1,14 @@
+# 演示页（本地预览用，不需要上线）
+demo_*.html
+
+# 探针测试与生成脚本
+_ex/
+
+# 本地参考文档（不需要上线）
+*.md
+supabase-setup.sql
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
